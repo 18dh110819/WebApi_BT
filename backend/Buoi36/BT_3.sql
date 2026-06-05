@@ -1,0 +1,108 @@
+-- CREATE DATABASE db_QLBanSach
+-- GO
+
+-- USE db_QLBanSach
+
+CREATE TABLE KhachHang(
+    MaKh INT PRIMARY KEY IDENTITY(1,1),
+    TaiKhoan NVARCHAR(50) UNIQUE,
+    MatKhau VARCHAR(255),
+    Email VARCHAR(100) UNIQUE,
+    DiaChi NVARCHAR(200),
+    DienThoai VARCHAR(15),
+    GioiTinh VARCHAR(10),
+    NgaySinh DATE,
+    HoTen NVARCHAR(20),
+    MaDonHang INT
+)
+
+CREATE TABLE DonHang(
+    MaDonHang INT PRIMARY KEY IDENTITY(1,1),
+    NgayDat DATETIME,
+    NgayGiao DATETIME,
+    TinhTrangGH INT,
+    DaThanhToan BIT DEFAULT 0
+)
+
+CREATE TABLE Sach(
+    MaSach INT PRIMARY KEY IDENTITY(1,1),
+    TenSach NVARCHAR(200),
+    GiaBan DECIMAL(18, 2),
+    MoTa NVARCHAR(2000),
+    AnhBia VARCHAR(2000),
+    NgayCapNhat DATE,
+    SoLuongTon INT
+)
+
+CREATE TABLE TacGia(
+    MaTacGia INT PRIMARY KEY IDENTITY(1,1),
+    TenTacGia NVARCHAR(20),
+    DiaChi NVARCHAR(200),
+    TieuSu NVARCHAR(MAX),
+    DienThoai VARCHAR(15),
+)
+
+CREATE TABLE ChuDe(
+    MaChuDe INT PRIMARY KEY IDENTITY(1,1),
+    TenChuDe NVARCHAR(20),
+    MaSach INT
+)
+
+CREATE TABLE NhaXuatBan(
+    MaNXB INT PRIMARY KEY IDENTITY(1,1),
+    TenNXB NVARCHAR(20),
+    DiaChi NVARCHAR(200),
+    DienThoai VARCHAR(15),
+    MaSach INT
+)
+
+ALTER TABLE KhachHang
+ADD CONSTRAINT FK_KhachHang_DonHang
+FOREIGN KEY (MaDonHang) REFERENCES DonHang(MaDonHang);
+
+ALTER TABLE ChuDe
+ADD CONSTRAINT FK_ChuDe_Sach
+FOREIGN KEY (MaSach) REFERENCES Sach(MaSach);
+
+ALTER TABLE NhaXuatBan
+ADD CONSTRAINT FK_NhaXuatBan_Sach
+FOREIGN KEY (MaSach) REFERENCES Sach(MaSach);
+
+
+CREATE TABLE ChiTietDonHang(
+    MaDonHang INT NOT NULL,
+    MaSach INT NOT NULL,
+    SoLuong INT NOT NULL,
+    DonGia DECIMAL(18, 2)
+)
+
+ALTER TABLE ChiTietDonHang
+ADD CONSTRAINT PK_ChiTietDonHang
+PRIMARY KEY(MaDonHang, MaSach)
+
+ALTER TABLE ChiTietDonHang
+ADD CONSTRAINT FK_ChiTietDonHang_DonHang
+FOREIGN KEY (MaDonHang) REFERENCES DonHang(MaDonHang);
+
+ALTER TABLE ChiTietDonHang
+ADD CONSTRAINT FK_ChiTietDonHang_Sach
+FOREIGN KEY (MaSach) REFERENCES Sach(MaSach);
+
+CREATE TABLE ThamGia(
+    MaTacGia INT NOT NULL,
+    MaSach INT NOT NULL,
+    VaiTro NVARCHAR(100),
+    ViTri NVARCHAR(100),
+)
+
+ALTER TABLE ThamGia
+ADD CONSTRAINT PK_ThamGia
+PRIMARY KEY(MaTacGia, MaSach)
+
+ALTER TABLE ThamGia
+ADD CONSTRAINT FK_ThamGia_TacGia
+FOREIGN KEY (MaTacGia) REFERENCES TacGia(MaTacGia);
+
+ALTER TABLE ThamGia
+ADD CONSTRAINT FK_ThamGia_Sach
+FOREIGN KEY (MaSach) REFERENCES Sach(MaSach);

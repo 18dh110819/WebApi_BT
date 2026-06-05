@@ -18,6 +18,9 @@ builder.Services.AddSwaggerGen(options =>
 //DI Database Context
 builder.Services.AddDbContext<UserContext>();
 
+//DI AutoMapper
+builder.Services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
+
 var app = builder.Build();
 
 app.MapControllers();

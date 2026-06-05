@@ -36,4 +36,8 @@ public class User
     public DateTime UpdatedAt { get; set; } = DateTime.Now;
     [DefaultValue(false)]
     public bool Deleted { get; set; } = false;
+
+    public string? AvatarUrl { get; set; }
+    [Phone]
+    public string? PhoneNumber { get; set; }
 }

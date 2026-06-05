@@ -6,6 +6,7 @@ using backend.Models;
 using backend.Helper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using AutoMapper;
 
 
 namespace backend.Controllers
@@ -15,10 +16,12 @@ namespace backend.Controllers
     public class UserController : ControllerBase
     {
         private readonly UserContext _context;
+        private readonly IMapper _mapper;
 
-        public UserController(UserContext context)
+        public UserController(UserContext context, IMapper mapper)
         {
             _context = context;
+            _mapper = mapper;
         }
 
         [HttpGet("users/all")]
@@ -62,20 +65,20 @@ namespace backend.Controllers
         }
 
         [HttpGet("users-ordered")]
-        public async Task<ActionResult> GetUsersOrdered([FromQuery] int sortBy)
+        public async Task<ActionResult> GetUsersOrdered([FromQuery] string sortBy)
         {
             IEnumerable<User> lst = _context.Users.Where(u => !u.Deleted).OrderBy(u => u.Name);
 
             // 1: Id, 2: Name, 3: CreatedAt
-            switch (sortBy)
+            switch (sortBy.ToLower())
             {
-                case 1:
+                case "id":
                     lst = lst.OrderBy(u => u.Id);
                     break;
-                case 2:
+                case "name":
                     lst = lst.OrderBy(u => u.Name);
                     break;
-                case 3:
+                case "createdat":
                     lst = lst.OrderBy(u => u.CreatedAt);
                     break;
                 default:
@@ -142,16 +145,34 @@ namespace backend.Controllers
             });
         }
 
+        [HttpGet("users/by-age")]
+        public async Task<ActionResult> GetUsersByAge([FromQuery] int min, [FromQuery] int max)
+        {
+            var lst = await _context.Users.Where(u => u.Age >= min && u.Age <= max && !u.Deleted).ToListAsync();
+            return StatusCode(StatusCodes.Status200OK, new ResponseType<List<User>>()
+            {
+                StatusCode = StatusCodes.Status200OK,
+                Data = lst,
+                Message = "Users retrieved successfully",
+                Timestamp = DateTime.UtcNow
+            });
+        }
+
         [HttpPost("users/create")]
         public async Task<ActionResult> CreateUser([FromBody] UserInsertDto dto)
         {
-            var user = new User
+            var user = _mapper.Map<User>(dto);
+
+            if (!CheckEmail(dto.Email).Result)
             {
-                Name = dto.Name,
-                Alias = HelperFunction.StringToSlug(dto.Name),
-                Email = dto.Email,
-                Age = dto.Age
-            };
+                return StatusCode(StatusCodes.Status409Conflict, new ResponseType<string>
+                {
+                    StatusCode = StatusCodes.Status409Conflict,
+                    Data = null,
+                    Message = "Email already exists",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
@@ -180,11 +201,18 @@ namespace backend.Controllers
                 });
             }
 
-            user.Name = dto.Name;
-            user.Alias = HelperFunction.StringToSlug(dto.Name);
-            user.Email = dto.Email;
-            user.Age = dto.Age;
-            user.Description = dto.Description;
+            _mapper.Map(dto, user);
+
+            if (!CheckEmail(dto.Email).Result)
+            {
+                return StatusCode(StatusCodes.Status409Conflict, new ResponseType<string>
+                {
+                    StatusCode = StatusCodes.Status409Conflict,
+                    Data = null,
+                    Message = "Email already exists",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
 
             await _context.SaveChangesAsync();
 
@@ -213,6 +241,8 @@ namespace backend.Controllers
             }
 
             user.Deleted = true;
+            user.UpdatedAt = DateTime.UtcNow;
+
             await _context.SaveChangesAsync();
 
             return StatusCode(StatusCodes.Status200OK, new ResponseType<string>()
@@ -224,6 +254,39 @@ namespace backend.Controllers
             });
         }
 
+        [HttpPatch("users/restore/{id}")]
+        public async Task<ActionResult> RestoreUser([FromRoute] int id)
+        {
+            var user = await _context.Users.SingleOrDefaultAsync(u => u.Id == id && u.Deleted);
+            if (user == null)
+            {
+                return NotFound(new ResponseType<string>
+                {
+                    StatusCode = StatusCodes.Status404NotFound,
+                    Data = null,
+                    Message = "User not found",
+                    Timestamp = DateTime.UtcNow
+                });
+            }
 
+            user.Deleted = false;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return StatusCode(StatusCodes.Status200OK, new ResponseType<string>()
+            {
+                StatusCode = StatusCodes.Status200OK,
+                Data = null,
+                Message = "User restored successfully",
+                Timestamp = DateTime.UtcNow
+            });
+        }
+
+        //kiểm tra Email không được trùng.
+        public async Task<bool> CheckEmail(string email)
+        {
+            return await _context.Users.AnyAsync(u => u.Email == email && !u.Deleted);
+        }
     }
 }
